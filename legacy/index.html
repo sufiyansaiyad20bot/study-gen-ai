@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Gen AI — AI Based Student Learning Assistant</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- ==================== NAVIGATION ==================== -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="index.html" class="navbar-brand">
+                <span class="logo-icon">🤖</span>
+                Study Gen AI
+            </a>
+            <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation">☰</button>
+            <div class="navbar-links" id="navbarLinks">
+                <a href="index.html" class="active">Home</a>
+                <a href="login.html">Login</a>
+                <a href="register.html">Register</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ==================== HERO SECTION ==================== -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-logo">🤖📚</div>
+            <h1>Study <span>Gen</span> AI</h1>
+            <p class="tagline">AI Based Student Learning Assistant</p>
+            <div class="hero-buttons">
+                <a href="login.html" class="btn btn-primary">Login</a>
+                <a href="register.html" class="btn btn-secondary">Register</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== FEATURES ==================== -->
+    <section class="features">
+        <div class="container">
+            <h2>What Can Study Gen AI Do?</h2>
+            <div class="features-grid">
+
+                <div class="feature-card">
+                    <div class="feature-icon">📄</div>
+                    <h3>Upload Notes</h3>
+                    <p>Upload your academic PDF notes and make them your personal study material.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">💬</div>
+                    <h3>Chat With AI</h3>
+                    <p>Ask questions about your study material and get clear AI-powered answers.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📝</div>
+                    <h3>Generate Quizzes</h3>
+                    <p>Create practice quizzes from your notes to test your understanding.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h3>Revision Notes</h3>
+                    <p>Get concise revision notes with key concepts and important points.</p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="footer">
+        <div class="container">
+            <p><span class="footer-brand">Study Gen AI</span> © 2026</p>
+            <p>AI Powered Student Learning Assistant</p>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile navigation toggle
+        const navbarToggle = document.getElementById('navbarToggle');
+        const navbarLinks = document.getElementById('navbarLinks');
+
+        navbarToggle.addEventListener('click', () => {
+            navbarLinks.classList.toggle('show');
+        });
+    </script>
+
+</body>
+</html>

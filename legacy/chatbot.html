@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat — Study Gen AI</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- ==================== NAVIGATION ==================== -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="navbar-brand">
+                <span class="logo-icon">🤖</span>
+                Study Gen AI
+            </a>
+            <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation">☰</button>
+            <div class="navbar-links" id="navbarLinks">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="upload.html">Upload Notes</a>
+                <a href="chatbot.html" class="active">Chat</a>
+                <a href="quiz.html">Quiz</a>
+                <a href="revision.html">Revision</a>
+                <a href="#" id="logoutBtn" class="btn btn-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ==================== CHAT CONTENT ==================== -->
+    <main class="main-content">
+        <div class="container">
+
+            <div class="page-header">
+                <h1>AI Learning Assistant</h1>
+                <p>Ask questions about your uploaded study material</p>
+            </div>
+
+            <div class="chat-container">
+
+                <!-- Chat header -->
+                <div class="chat-header">
+                    <div class="chat-avatar">🤖</div>
+                    <div>
+                        <h2>Study Gen AI</h2>
+                        <span class="chat-status">● Online</span>
+                    </div>
+                </div>
+
+                <!-- Chat messages area -->
+                <div class="chat-messages" id="chatMessages">
+
+                    <!-- Initial AI welcome message -->
+                    <div class="chat-message ai">
+                        <div class="message-avatar">🤖</div>
+                        <div class="message-bubble">
+                            Hello 👋<br>
+                            I am Study Gen AI.<br>
+                            Ask me anything about your study material.
+                            <div class="message-time" id="welcomeTime"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Chat input area -->
+                <div class="chat-input-area">
+                    <textarea id="chatInput" placeholder="Type your question here..." rows="1" aria-label="Type your question"></textarea>
+                    <button class="btn btn-primary" id="sendBtn">Send</button>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="footer">
+        <div class="container">
+            <p><span class="footer-brand">Study Gen AI</span> © 2026</p>
+            <p>AI Powered Student Learning Assistant</p>
+        </div>
+    </footer>
+
+    <script src="js/chat.js"></script>
+    <script>
+        // Mobile navigation toggle
+        const navbarToggle = document.getElementById('navbarToggle');
+        const navbarLinks = document.getElementById('navbarLinks');
+
+        navbarToggle.addEventListener('click', () => {
+            navbarLinks.classList.toggle('show');
+        });
+    </script>
+
+</body>
+</html>

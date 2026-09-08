@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Notes — Study Gen AI</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- ==================== NAVIGATION ==================== -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="navbar-brand">
+                <span class="logo-icon">🤖</span>
+                Study Gen AI
+            </a>
+            <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation">☰</button>
+            <div class="navbar-links" id="navbarLinks">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="upload.html" class="active">Upload Notes</a>
+                <a href="chatbot.html">Chat</a>
+                <a href="quiz.html">Quiz</a>
+                <a href="revision.html">Revision</a>
+                <a href="#" id="logoutBtn" class="btn btn-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ==================== UPLOAD CONTENT ==================== -->
+    <main class="main-content">
+        <div class="container">
+            <div class="upload-container">
+
+                <div class="page-header">
+                    <h1>Upload Notes</h1>
+                    <p>Upload your academic PDF notes to make them your personal study material.</p>
+                </div>
+
+                <!-- Alert message area -->
+                <div class="alert alert-error" id="uploadAlert"></div>
+                <div class="alert alert-success" id="uploadSuccess"></div>
+
+                <!-- Upload dropzone -->
+                <div class="upload-dropzone" id="dropzone">
+                    <div class="upload-icon">📄</div>
+                    <h3>Drag & Drop your PDF here</h3>
+                    <p>or click to browse files</p>
+                    <input type="file" id="fileInput" accept=".pdf" aria-label="Choose PDF file">
+                </div>
+
+                <!-- Selected file info -->
+                <div class="upload-file-info hidden" id="fileInfo">
+                    <div class="file-name">
+                        <span>📎</span>
+                        <span id="fileName"></span>
+                    </div>
+                    <div class="file-size" id="fileSize"></div>
+                </div>
+
+                <!-- Upload progress -->
+                <div class="upload-progress" id="uploadProgress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">Uploading...</div>
+                </div>
+
+                <!-- Upload button -->
+                <button class="btn btn-primary btn-block mt-3" id="uploadBtn" disabled>
+                    Upload PDF
+                </button>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="footer">
+        <div class="container">
+            <p><span class="footer-brand">Study Gen AI</span> © 2026</p>
+            <p>AI Powered Student Learning Assistant</p>
+        </div>
+    </footer>
+
+    <script src="js/upload.js"></script>
+    <script>
+        // Mobile navigation toggle
+        const navbarToggle = document.getElementById('navbarToggle');
+        const navbarLinks = document.getElementById('navbarLinks');
+
+        navbarToggle.addEventListener('click', () => {
+            navbarLinks.classList.toggle('show');
+        });
+    </script>
+
+</body>
+</html>

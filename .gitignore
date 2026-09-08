@@ -1,0 +1,104 @@
+# ====================================================
+# Study Gen AI â€” Git Ignore
+# Never commit secrets, uploaded files, or local data
+# ====================================================
+
+# Environment variables / secrets
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.python-version
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Database files (keep local)
+*.db
+*.sqlite
+*.sqlite3
+database/
+!database/.gitkeep
+
+# Uploaded documents (private student data)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Vector store (local index files)
+vector_store/
+vector_store/*
+!vector_store/.gitkeep
+
+# Node / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.vite/
+dist/
+dist-ssr/
+*.local
+
+# Frontend build output
+frontend/dist/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.coverage.*
+.hypothesis/
+.coverage
+coverage.xml
+*.cover
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Misc
+*.bak
+*.tmp

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Quiz — Study Gen AI</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- ==================== NAVIGATION ==================== -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="navbar-brand">
+                <span class="logo-icon">🤖</span>
+                Study Gen AI
+            </a>
+            <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation">☰</button>
+            <div class="navbar-links" id="navbarLinks">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="upload.html">Upload Notes</a>
+                <a href="chatbot.html">Chat</a>
+                <a href="quiz.html" class="active">Quiz</a>
+                <a href="revision.html">Revision</a>
+                <a href="#" id="logoutBtn" class="btn btn-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ==================== QUIZ CONTENT ==================== -->
+    <main class="main-content">
+        <div class="container">
+            <div class="quiz-container">
+
+                <div class="page-header">
+                    <h1>Generate Quiz</h1>
+                    <p>Create a practice quiz from your study material</p>
+                </div>
+
+                <!-- Alert message area -->
+                <div class="alert alert-error" id="quizAlert"></div>
+
+                <!-- Quiz generation form -->
+                <div class="quiz-form">
+                    <div class="form-group">
+                        <label for="quizTopic">Topic</label>
+                        <input type="text" id="quizTopic" placeholder="e.g. Database Management Systems" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="quizCount">Number of Questions</label>
+                        <select id="quizCount">
+                            <option value="5">5 Questions</option>
+                            <option value="10" selected>10 Questions</option>
+                            <option value="15">15 Questions</option>
+                            <option value="20">20 Questions</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary btn-block" id="generateQuizBtn">
+                        Generate Quiz
+                    </button>
+                </div>
+
+                <!-- Quiz questions will be rendered here -->
+                <div id="quizQuestions"></div>
+
+                <!-- Score display -->
+                <div class="quiz-score hidden" id="quizScore">
+                    <h2 id="scoreText">Score: 0 / 0</h2>
+                    <p class="text-muted mt-1" id="scoreMessage"></p>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="footer">
+        <div class="container">
+            <p><span class="footer-brand">Study Gen AI</span> © 2026</p>
+            <p>AI Powered Student Learning Assistant</p>
+        </div>
+    </footer>
+
+    <script src="js/quiz.js"></script>
+    <script>
+        // Mobile navigation toggle
+        const navbarToggle = document.getElementById('navbarToggle');
+        const navbarLinks = document.getElementById('navbarLinks');
+
+        navbarToggle.addEventListener('click', () => {
+            navbarLinks.classList.toggle('show');
+        });
+    </script>
+
+</body>
+</html>
