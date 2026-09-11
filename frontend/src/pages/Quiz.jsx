@@ -1,11 +1,12 @@
 /**
- * Study Gen AI â€” Quiz
+ * Study Gen AI — Quiz
  */
 
-import { CheckCircle2, FileText, GraduationCap, Loader2, RefreshCw, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileText, GraduationCap, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import AppShell from "../components/AppShell";
+import { AIErrorBanner, ThinkingDots } from "../components/States";
 import { documentsApi, quizApi } from "../services/api";
 
 export default function Quiz() {
@@ -17,6 +18,7 @@ export default function Quiz() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [aiError, setAiError] = useState(null);
 
   useEffect(() => {
     documentsApi
@@ -29,6 +31,7 @@ export default function Quiz() {
     if (loading) return;
     setLoading(true);
     setError("");
+    setAiError(null);
     setQuestions([]);
     setAnswers({});
     setSubmitted(false);
@@ -39,6 +42,7 @@ export default function Quiz() {
       setQuestions(res.questions || []);
     } catch (err) {
       setError(err.message);
+      setAiError(err);
     } finally {
       setLoading(false);
     }
@@ -109,7 +113,7 @@ export default function Quiz() {
               {loading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Generatingâ€¦
+                  Creating quiz…
                 </>
               ) : (
                 <>
@@ -126,11 +130,25 @@ export default function Quiz() {
             Upload study material first to generate quizzes.
           </p>
         )}
-        {error && (
-          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-error">
-            {error}
-          </p>
-        )}
+{error && (
+            <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-error">
+              {error}
+            </p>
+          )}
+          {aiError && !loading && (
+            <div className="mt-3">
+              <AIErrorBanner
+                err={aiError}
+                onRetry={generate}
+                compact
+              />
+            </div>
+          )}
+          {loading && (
+            <div className="mt-3">
+              <ThinkingDots label="Creating your quiz…" />
+            </div>
+          )}
       </div>
 
       {questions.length > 0 && (
@@ -143,9 +161,9 @@ export default function Quiz() {
                 </h3>
                 <p className="text-sm text-secondary">
                   {score === questions.length
-                    ? "Perfect! ðŸŽ‰"
+                    ? "Perfect!"
                     : score >= questions.length / 2
-                    ? "Nice work â€” review the explanations below."
+                    ? "Nice work — review the explanations below."
                     : "Keep going. Re-read the relevant notes and try again."}
                 </p>
               </div>

@@ -37,10 +37,32 @@ async function request(path, options = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
+  // AbortController gives us a hard timeout so a hung Gemini call
+  // (or a 429 retry storm) can never leave the UI stuck on "thinking...".
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30000);
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === "AbortError") {
+      const e = new Error("Request timed out. The AI service took too long to respond. Please try again.");
+      e.code = "AI_TIMEOUT";
+      e.status = 408;
+      throw e;
+    }
+    const e = new Error("Network error: could not reach the backend. Check your connection and try again.");
+    e.code = "AI_NETWORK_ERROR";
+    e.status = 0;
+    throw e;
+  }
+  clearTimeout(timer);
 
   if (response.status === 401) {
     clearToken();

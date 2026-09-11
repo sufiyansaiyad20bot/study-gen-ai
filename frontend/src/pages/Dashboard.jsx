@@ -1,5 +1,5 @@
 /**
- * Study Gen AI â€” Dashboard
+ * Study Gen AI — Dashboard
  */
 
 import { Bot, FileText, GraduationCap, Sparkles, Upload as UploadIcon } from "lucide-react";
@@ -79,7 +79,7 @@ export default function Dashboard() {
 
   return (
     <AppShell
-      title={(name) => `Welcome back, ${name} ðŸ‘‹`}
+      title={(name) => `Welcome back, ${name} `}
       subtitle="Here's an overview of your study workspace."
     >
       {/* Stats */}
@@ -87,7 +87,7 @@ export default function Dashboard() {
         <StatCard
           label="Documents"
           value={loading ? "â€”" : docs.length}
-          hint={loading ? "Loadingâ€¦" : `${readyCount} ready`}
+          hint={loading ? "Loading…" : `${readyCount} ready`}
           icon={FileText}
         />
         <StatCard
@@ -99,7 +99,7 @@ export default function Dashboard() {
         <StatCard
           label="Quick start"
           value="4"
-          hint="Chat Â· Upload Â· Quiz Â· Revision"
+          hint="Chat · Upload · Quiz · Revision"
           icon={Sparkles}
         />
       </div>
@@ -142,7 +142,7 @@ export default function Dashboard() {
       </h2>
       <div className="rounded-2xl border border-border bg-card shadow-card">
         {loading ? (
-          <div className="p-6 text-sm text-secondary">Loadingâ€¦</div>
+          <div className="p-6 text-sm text-secondary">Loading…</div>
         ) : recent.length === 0 ? (
           <div className="p-8 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-pink-light text-pink">
@@ -176,7 +176,7 @@ export default function Dashboard() {
                       {d.filename}
                     </div>
                     <div className="text-xs text-muted">
-                      {d.file_type.toUpperCase()} Â· {d.chunk_count} chunks Â· {timeAgo(d.created_at)}
+                      {d.file_type.toUpperCase()} · {d.chunk_count} chunks · {timeAgo(d.created_at)}
                     </div>
                   </div>
                 </div>

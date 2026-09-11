@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ====================================================
-   Study Gen AI â€” Design System (Tailwind v4)
+   Study Gen AI — Design System (Tailwind v4)
    ==================================================== */
 
 @theme {
@@ -95,6 +95,10 @@ body {
   }
 }
 
+/* ====================================================
+   Animations
+   ==================================================== */
+
 /* Message entrance animation */
 @keyframes message-in {
   from {
@@ -123,4 +127,169 @@ body {
 
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
+}
+
+/* Page entrance transition */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-enter {
+  animation: page-enter 0.25s ease-out;
+}
+
+/* Thinking dots — sequential */
+@keyframes thinking-dot {
+  0%, 60%, 100% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.thinking-dot-1 { animation: thinking-dot 1.2s ease-in-out infinite; }
+.thinking-dot-2 { animation: thinking-dot 1.2s ease-in-out infinite 0.2s; }
+.thinking-dot-3 { animation: thinking-dot 1.2s ease-in-out infinite 0.4s; }
+
+/* AI icon pulse */
+@keyframes ai-icon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(217, 107, 136, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(217, 107, 136, 0);
+  }
+}
+
+.ai-icon-pulse {
+  animation: ai-icon-pulse 1.5s ease-in-out infinite;
+}
+
+/* Card hover lift */
+@keyframes card-lift {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-2px);
+  }
+}
+
+.card-hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Button press */
+@keyframes button-press {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+.button-press:active {
+  animation: button-press 0.1s ease;
+}
+
+/* Spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Progress bar shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Toast/slide-in */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.2s ease-out;
+}
+
+/* ====================================================
+   Chat-specific styles
+   ==================================================== */
+
+/* Chat message scroll container */
+.chat-scroll-area {
+  scroll-behavior: smooth;
+}
+
+/* Source citation card */
+.source-chip {
+  transition: background-color 0.15s ease;
+}
+
+.source-chip:hover {
+  background-color: var(--color-pink-light);
+}
+
+/* Document selector item */
+.doc-selector-item {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Input focus glow */
+.input-focus-glow:focus {
+  outline: none;
+  border-color: var(--color-pink);
+  box-shadow: 0 0 0 3px rgba(217, 107, 136, 0.15);
+}
+
+/* ====================================================
+   Reduced motion
+   ==================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-message-in,
+  .animate-fade-in,
+  .animate-page-enter,
+  .thinking-dot-1,
+  .thinking-dot-2,
+  .thinking-dot-3,
+  .ai-icon-pulse,
+  .card-hover-lift,
+  .button-press,
+  .animate-spin,
+  .shimmer,
+  .animate-slide-in {
+    animation: none !important;
+    transition: none !important;
+  }
 }

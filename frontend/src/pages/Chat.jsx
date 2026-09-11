@@ -1,11 +1,12 @@
 /**
- * Study Gen AI â€” Chat (RAG-powered Q&A)
+ * Study Gen AI — Chat (RAG-powered Q&A)
  */
 
-import { Bot, FileText, Loader2, Send, User as UserIcon } from "lucide-react";
+import { Bot, CheckCircle, FileText, Loader2, Send, User as UserIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import AppShell from "../components/AppShell";
+import { AIErrorBanner, ThinkingDots } from "../components/States";
 import { chatApi, documentsApi } from "../services/api";
 
 export default function Chat() {
@@ -21,6 +22,8 @@ export default function Chat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [aiError, setAiError] = useState(null);
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -28,6 +31,42 @@ export default function Chat() {
       .list()
       .then((d) => setDocs(d.filter((x) => x.status === "ready")))
       .catch((err) => setError(err.message));
+  }, []);
+
+  // Load persisted chat history on mount so conversations survive
+  // navigation, refresh, and switching between pages.
+  useEffect(() => {
+    let cancelled = false;
+    setHistoryLoading(true);
+    chatApi
+      .history()
+      .then((rows) => {
+        if (cancelled) return;
+        if (rows && rows.length > 0) {
+          setMessages(
+            rows.map((r) => ({
+              role: "user",
+              content: r.question,
+            })).concat(
+              rows.map((r) => ({
+                role: "assistant",
+                content: r.answer,
+                sources: [],
+                grounded: r.grounded,
+              }))
+            )
+          );
+        }
+      })
+      .catch(() => {
+        // History load failure is non-fatal — keep the default greeting.
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -42,6 +81,7 @@ export default function Chat() {
       return;
     }
     setError("");
+    setAiError(null);
     setMessages((m) => [...m, { role: "user", content: text }]);
     setInput("");
     setLoading(true);
@@ -59,12 +99,40 @@ export default function Chat() {
         },
       ]);
     } catch (err) {
-      const fallback =
-        "The AI service is temporarily unavailable. Your uploaded study material and RAG retrieval are still working — please try again in a moment.";
+      // Every request must end in success OR a visible error state.
+      // Never leave the UI stuck on "thinking...".
+      const code = err.code || "";
+      let userMsg;
+      if (code === "AI_QUOTA_EXCEEDED") {
+        userMsg =
+          "Gemini AI is temporarily unavailable — the API quota has been reached. Your documents and RAG retrieval are still working. Please try again later.";
+      } else if (code === "AI_UNAVAILABLE") {
+        userMsg =
+          "The AI service is temporarily unavailable. Your documents and RAG retrieval are still working — please try again in a moment.";
+      } else if (code === "AI_NETWORK_ERROR") {
+        userMsg =
+          "Could not reach the AI service. Check your network connection and try again.";
+      } else if (code === "AI_TIMEOUT") {
+        userMsg =
+          "The AI service took too long to respond. Please try again.";
+      } else if (code === "AI_NOT_CONFIGURED") {
+        userMsg =
+          "The AI service is not configured on the server. Ask an admin to set GEMINI_API_KEY.";
+      } else if (err.status === 400) {
+        userMsg = err.message || "Please upload a document first.";
+      } else if (err.status === 401) {
+        userMsg = "Session expired. Please log in again.";
+      } else {
+        userMsg =
+          err.message ||
+          "Something went wrong. Please try again.";
+      }
       setMessages((m) => [
         ...m,
-        { role: "assistant", content: err.message || fallback, sources: [] },
+        { role: "assistant", content: userMsg, sources: [] },
       ]);
+      // Keep the error banner visible for retry
+      setAiError(err);
     } finally {
       setLoading(false);
     }
@@ -79,7 +147,7 @@ export default function Chat() {
         <aside className="rounded-2xl border border-border bg-card p-4 shadow-card">
           <h3 className="px-2 text-sm font-semibold text-dark">Your Documents</h3>
           <p className="mb-3 px-2 text-xs text-muted">
-            {docs.length} ready Â· pick one to scope the chat
+            {docs.length} ready · pick one to scope the chat
           </p>
           <ul className="space-y-1">
             <li>
@@ -88,7 +156,7 @@ export default function Chat() {
                 className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${
                   docId === ""
                     ? "bg-pink-light text-pink"
-                    : "text-secondary hover:bg-bg hover:text-dark"
+                    : "doc-selector-item text-secondary hover:bg-bg hover:text-dark"
                 }`}
               >
                 All documents
@@ -101,7 +169,7 @@ export default function Chat() {
                   className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${
                     docId === String(d.id)
                       ? "bg-pink-light text-pink"
-                      : "text-secondary hover:bg-bg hover:text-dark"
+                      : "doc-selector-item text-secondary hover:bg-bg hover:text-dark"
                   }`}
                 >
                   <FileText size={14} className="shrink-0" />
@@ -117,22 +185,45 @@ export default function Chat() {
           )}
         </aside>
 
-        <section className="flex h-[70vh] flex-col rounded-2xl border border-border bg-card shadow-card">
-          <div className="flex-1 space-y-4 overflow-y-auto p-5">
+        <section className="flex h-[72vh] flex-col rounded-2xl border border-border bg-card shadow-card">
+          <div className="flex-1 space-y-4 overflow-y-auto p-5 chat-scroll-area">
+            {historyLoading && messages.length === 1 && (
+              <div className="flex items-center gap-2 text-sm text-muted">
+                <Loader2 size={14} className="animate-spin" />
+                Loading conversation…
+              </div>
+            )}
             {messages.map((m, i) => (
-              <Message key={i} message={m} />
+              <div key={i} className="animate-message-in">
+                <Message message={m} />
+              </div>
             ))}
             {loading && (
-              <div className="flex items-center gap-2 text-sm text-secondary">
-                <Loader2 size={16} className="animate-spin" />
-                Study Gen AI is thinkingâ€¦
+              <div className="animate-message-in">
+                <ThinkingDots label="Study Gen AI is thinking" />
+              </div>
+            )}
+            {aiError && !loading && (
+              <div className="animate-message-in">
+                <AIErrorBanner
+                  err={aiError}
+                  onRetry={() => {
+                    const lastUser = [...messages]
+                      .reverse()
+                      .find((m) => m.role === "user");
+                    if (lastUser) {
+                      setInput(lastUser.content);
+                    }
+                    setAiError(null);
+                  }}
+                />
               </div>
             )}
             <div ref={endRef} />
           </div>
 
           {error && (
-            <div className="mx-5 mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-error">
+            <div className="mx-5 mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-error animate-slide-in">
               {error}
             </div>
           )}
@@ -155,16 +246,17 @@ export default function Chat() {
                     send();
                   }
                 }}
-                placeholder="Ask a question about your notesâ€¦"
-                className="min-h-[44px] max-h-40 flex-1 resize-none rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-dark outline-none transition focus:border-pink focus:ring-2 focus:ring-pink/20"
+                placeholder="Ask a question about your notes"
+                disabled={loading}
+                className="min-h-[44px] max-h-40 flex-1 resize-none rounded-xl border border-border bg-bg px-4 py-2.5 text-sm text-dark outline-none transition input-focus-glow disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={!input.trim() || loading}
-                className="inline-flex h-11 items-center gap-2 rounded-lg bg-pink px-4 text-sm font-medium text-white transition hover:bg-pink-dark disabled:opacity-60"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-pink px-4 text-sm font-medium text-white transition hover:bg-pink-dark disabled:opacity-60 button-press"
               >
-                <Send size={16} />
-                Send
+                {loading ? <ButtonSpinner /> : <Send size={16} />}
+                {loading ? "Sending" : "Send"}
               </button>
             </form>
           </div>
@@ -191,14 +283,20 @@ function Message({ message }) {
         }`}
       >
         <div className="whitespace-pre-wrap">{message.content}</div>
+        {!isUser && message.grounded && (
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
+            <CheckCircle size={10} />
+            Grounded in your study material
+          </div>
+        )}
         {!isUser && message.sources && message.sources.length > 0 && (
           <div className="mt-3 border-t border-border pt-2 text-xs">
             <div className="mb-1 font-semibold text-muted">Sources</div>
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {message.sources.map((s, i) => (
-                <li key={i} className="text-secondary">
+                <li key={i} className="text-secondary source-chip -mx-1 rounded-lg px-1">
                   <span className="font-medium text-dark">{s.doc_filename}</span>{" "}
-                  <span className="text-muted">chunk {s.chunk_index} Â· score {s.score}</span>
+                  <span className="text-muted">chunk {s.chunk_index} · score {s.score}</span>
                   <div className="text-muted">{s.snippet}</div>
                 </li>
               ))}

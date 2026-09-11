@@ -167,12 +167,10 @@ def _call_gemini(prompt: str, system: str) -> str:
             resp = model.generate_content(
                 [system, prompt],
                 generation_config={"temperature": 0.3, "max_output_tokens": 2048},
-                request_options={"timeout": 25},
+                request_options={"timeout": 20},
             )
             text = (resp.text or "").strip()
             if not text:
-                # Empty response from Gemini is not a quota issue, but
-                # treat as AI_UNAVAILABLE rather than pretending success.
                 raise AIError("AI_UNAVAILABLE", MSG_UNAVAILABLE)
             return text
         except AIError:
@@ -180,26 +178,29 @@ def _call_gemini(prompt: str, system: str) -> str:
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
             low = str(exc).lower()
-            transient = (
+            # 429 quota: do NOT retry — retrying a quota error just wastes time
+            # and the user needs to see the quota message immediately.
+            is_quota = (
                 "429" in str(exc)
-                or "500" in str(exc)
+                or "resource_exhausted" in low
+                or "quota" in low
+                or "rate" in low
+            )
+            if is_quota:
+                raise _classify_exception(exc) from exc
+            transient = (
+                "500" in str(exc)
                 or "502" in str(exc)
                 or "503" in str(exc)
                 or "504" in str(exc)
                 or "deadline" in low
                 or "timed out" in low
-                or "resource_exhausted" in low
-                or "quota" in low
-                or "rate" in low
             )
-            # For transient errors, retry up to 3 times with backoff
             if transient and attempt < 2:
-                time.sleep(1.5 * (attempt + 1))
+                time.sleep(1.0 * (attempt + 1))
                 continue
-            # Otherwise, classify and raise
             raise _classify_exception(exc) from exc
 
-    # Should not be reached, but guard anyway
     if last_exc:
         raise _classify_exception(last_exc) from last_exc
     raise AIError("AI_UNAVAILABLE", MSG_UNAVAILABLE)

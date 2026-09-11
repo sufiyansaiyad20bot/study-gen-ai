@@ -224,7 +224,7 @@ export default function Register() {
               disabled={loading}
               className="w-full rounded-lg bg-pink px-4 py-2.5 text-sm font-medium text-white transition hover:bg-pink-dark disabled:opacity-60"
             >
-              {loading ? "Creating accountâ€¦" : "Create Account"}
+              {loading ? "Creating account…" : "Create Account"}
             </button>
           </form>
 
@@ -237,7 +237,7 @@ export default function Register() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted">
-          Study Gen AI Â© 2026
+          Study Gen AI © 2026
         </p>
       </div>
     </div>

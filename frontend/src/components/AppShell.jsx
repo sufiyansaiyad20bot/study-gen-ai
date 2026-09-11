@@ -1,5 +1,5 @@
 /**
- * Study Gen AI â€” App Shell
+ * Study Gen AI — App Shell
  *
  * Shared header + sidebar layout for all authenticated pages.
  */
@@ -29,19 +29,19 @@ export default function AppShell({ children, title, subtitle }) {
 
   return (
     <div className="min-h-screen bg-bg">
-      <header className="border-b border-border bg-card">
+      <header className="border-b border-border bg-card/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-pink-light text-pink">
               <BookOpen size={18} />
             </div>
             <span className="text-lg font-semibold text-dark">Study Gen AI</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
               <div className="text-sm font-medium text-dark">{user?.name}</div>
               <div className="text-xs text-muted">
-                {user?.branch} Â· Semester {user?.semester}
+                {user?.branch} · Semester {user?.semester}
               </div>
             </div>
             <button
@@ -49,7 +49,7 @@ export default function AppShell({ children, title, subtitle }) {
               className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-secondary transition hover:bg-bg hover:text-dark"
             >
               <LogOut size={16} />
-              Logout
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
@@ -81,7 +81,7 @@ export default function AppShell({ children, title, subtitle }) {
           </nav>
         </aside>
 
-        <main className="min-w-0 flex-1">
+        <main className="min-w-0 flex-1 animate-page-enter">
           {(title || subtitle) && (
             <div className="mb-6">
               {title && (

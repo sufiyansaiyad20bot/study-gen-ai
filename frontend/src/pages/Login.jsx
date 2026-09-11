@@ -126,7 +126,7 @@ export default function Login() {
               disabled={loading}
               className="w-full rounded-lg bg-pink px-4 py-2.5 text-sm font-medium text-white transition hover:bg-pink-dark disabled:opacity-60"
             >
-              {loading ? "Logging inâ€¦" : "Login"}
+              {loading ? "Logging in…" : "Login"}
             </button>
           </form>
 
@@ -139,7 +139,7 @@ export default function Login() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted">
-          Study Gen AI Â© 2026
+          Study Gen AI © 2026
         </p>
       </div>
     </div>

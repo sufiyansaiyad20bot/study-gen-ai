@@ -167,7 +167,7 @@ export default function Documents() {
         {uploading && (
           <div className="mt-4">
             <div className="mb-1 flex items-center justify-between text-xs text-muted">
-              <span>Uploadingâ€¦</span>
+              <span>Uploading…</span>
               <span>{progress}%</span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-bg">
@@ -205,7 +205,7 @@ export default function Documents() {
             {uploading ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                Uploadingâ€¦
+                Uploading…
               </>
             ) : (
               <>
@@ -238,7 +238,7 @@ export default function Documents() {
         {loading ? (
           <div className="flex items-center justify-center gap-2 p-10 text-secondary">
             <Loader2 size={18} className="animate-spin" />
-            Loading your documentsâ€¦
+            Loading your documents…
           </div>
         ) : docs.length === 0 ? (
           <div className="flex flex-col items-center gap-2 p-10 text-center">
@@ -267,8 +267,8 @@ export default function Documents() {
                       {statusBadge(d.status)}
                     </div>
                     <div className="mt-1 text-xs text-muted">
-                      {d.file_type.toUpperCase()} Â· {formatBytes(d.file_size)} Â·{" "}
-                      {d.chunk_count} chunks Â· {new Date(d.created_at).toLocaleString()}
+                      {d.file_type.toUpperCase()} · {formatBytes(d.file_size)} ·{" "}
+                      {d.chunk_count} chunks · {new Date(d.created_at).toLocaleString()}
                     </div>
                     {d.error_message && (
                       <div className="mt-1 text-xs text-error">{d.error_message}</div>

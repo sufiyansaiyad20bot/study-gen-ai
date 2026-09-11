@@ -1,11 +1,12 @@
 /**
- * Study Gen AI â€” Revision Notes
+ * Study Gen AI — Revision Notes
  */
 
 import { FileText, Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import AppShell from "../components/AppShell";
+import { AIErrorBanner, ThinkingDots } from "../components/States";
 import { documentsApi, revisionApi } from "../services/api";
 
 export default function Revision() {
@@ -14,6 +15,7 @@ export default function Revision() {
   const [topic, setTopic] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [aiError, setAiError] = useState(null);
   const [notes, setNotes] = useState(null);
 
   useEffect(() => {
@@ -27,6 +29,7 @@ export default function Revision() {
     if (loading) return;
     setLoading(true);
     setError("");
+    setAiError(null);
     setNotes(null);
     try {
       const payload = {};
@@ -36,6 +39,7 @@ export default function Revision() {
       setNotes(res);
     } catch (err) {
       setError(err.message);
+      setAiError(err);
     } finally {
       setLoading(false);
     }
@@ -84,7 +88,7 @@ export default function Revision() {
               {loading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Generatingâ€¦
+                  Generating…
                 </>
               ) : (
                 <>
@@ -100,11 +104,25 @@ export default function Revision() {
             Upload study material first to generate revision notes.
           </p>
         )}
-        {error && (
-          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-error">
-            {error}
-          </p>
-        )}
+{error && (
+            <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-error">
+              {error}
+            </p>
+          )}
+          {aiError && !loading && (
+            <div className="mt-3">
+              <AIErrorBanner
+                err={aiError}
+                onRetry={generate}
+                compact
+              />
+            </div>
+          )}
+          {loading && (
+            <div className="mt-3">
+              <ThinkingDots label="Preparing your revision notes…" />
+            </div>
+          )}
       </div>
 
       {notes && (
@@ -172,7 +190,7 @@ export default function Revision() {
                 {notes.sources.map((s, i) => (
                   <li key={i}>
                     <span className="font-medium text-dark">{s.doc_filename}</span>{" "}
-                    chunk {s.chunk_index} Â· score {s.score}
+                    chunk {s.chunk_index} · score {s.score}
                     <div>{s.snippet}</div>
                   </li>
                 ))}
