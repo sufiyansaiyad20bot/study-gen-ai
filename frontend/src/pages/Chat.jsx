@@ -9,6 +9,17 @@ import AppShell from "../components/AppShell";
 import { AIErrorBanner, ThinkingDots } from "../components/States";
 import { chatApi, documentsApi } from "../services/api";
 
+const QUICK_PROMPTS = [
+  "Explain this in simple terms",
+  "Summarize the important points",
+  "Give me the key concepts",
+  "Explain with an example",
+  "What are the important definitions?",
+  "Help me revise this topic",
+  "What should I remember for an exam?",
+  "Test my understanding",
+];
+
 export default function Chat() {
   const [docs, setDocs] = useState([]);
   const [docId, setDocId] = useState("");
@@ -25,6 +36,16 @@ export default function Chat() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [aiError, setAiError] = useState(null);
   const endRef = useRef(null);
+
+  // True when only the default greeting is present (no real conversation yet)
+  const hasConversation = messages.length > 1;
+
+  function submitPrompt(prompt) {
+    if (loading) return;
+    setInput(prompt);
+    // Use a microtask so the input state updates before send() reads it
+    setTimeout(() => send(prompt), 0);
+  }
 
   useEffect(() => {
     documentsApi
@@ -53,6 +74,8 @@ export default function Chat() {
                 content: r.answer,
                 sources: [],
                 grounded: r.grounded,
+                answer_source: r.grounded ? "uploaded_documents" : "general_knowledge",
+                general_message: r.grounded ? "" : "This information was not found in your uploaded study material.",
               }))
             )
           );
@@ -73,8 +96,8 @@ export default function Chat() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  async function send() {
-    const text = input.trim();
+  async function send(overrideText) {
+    const text = (overrideText ?? input).trim();
     if (!text || loading) return;
     if (docs.length === 0) {
       setError("You need to upload a study material first.");
@@ -89,19 +112,27 @@ export default function Chat() {
       const payload = { question: text };
       if (docId) payload.document_id = Number(docId);
       const res = await chatApi.ask(payload);
+      // Safe fallbacks — never render undefined/null as JSX
+      const answerText = res?.answer || "I could not generate a response. Please try again.";
+      const sources = Array.isArray(res?.sources) ? res.sources : [];
+      const grounded = Boolean(res?.grounded);
+      const answerSource = res?.answer_source || (grounded ? "uploaded_documents" : "general_knowledge");
+      const generalMessage = res?.general_message || "";
       setMessages((m) => [
         ...m,
         {
           role: "assistant",
-          content: res.answer,
-          sources: res.sources || [],
-          grounded: res.grounded,
+          content: answerText,
+          sources: sources,
+          grounded: grounded,
+          answer_source: answerSource,
+          general_message: generalMessage,
         },
       ]);
     } catch (err) {
       // Every request must end in success OR a visible error state.
       // Never leave the UI stuck on "thinking...".
-      const code = err.code || "";
+      const code = err?.code || "";
       let userMsg;
       if (code === "AI_QUOTA_EXCEEDED") {
         userMsg =
@@ -118,13 +149,13 @@ export default function Chat() {
       } else if (code === "AI_NOT_CONFIGURED") {
         userMsg =
           "The AI service is not configured on the server. Ask an admin to set GEMINI_API_KEY.";
-      } else if (err.status === 400) {
-        userMsg = err.message || "Please upload a document first.";
-      } else if (err.status === 401) {
+      } else if (err?.status === 400) {
+        userMsg = err?.message || "Please upload a document first.";
+      } else if (err?.status === 401) {
         userMsg = "Session expired. Please log in again.";
       } else {
         userMsg =
-          err.message ||
+          err?.message ||
           "Something went wrong. Please try again.";
       }
       setMessages((m) => [
@@ -222,6 +253,28 @@ export default function Chat() {
             <div ref={endRef} />
           </div>
 
+          {/* Quick Prompts — shown when no conversation has started yet */}
+          {!hasConversation && !loading && (
+            <div className="border-t border-border px-5 py-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                How can I help you study?
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_PROMPTS.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => submitPrompt(prompt)}
+                    className="rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-secondary transition hover:border-pink/40 hover:bg-pink-light hover:text-pink disabled:opacity-50"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="mx-5 mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-error animate-slide-in">
               {error}
@@ -268,6 +321,9 @@ export default function Chat() {
 
 function Message({ message }) {
   const isUser = message.role === "user";
+  const isGrounded = message.grounded;
+  const answerSource = message.answer_source || (isGrounded ? "uploaded_documents" : "general_knowledge");
+  const generalMessage = message.general_message || "";
   return (
     <div className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
       {!isUser && (
@@ -283,11 +339,20 @@ function Message({ message }) {
         }`}
       >
         <div className="whitespace-pre-wrap">{message.content}</div>
-        {!isUser && message.grounded && (
+        {!isUser && answerSource === "uploaded_documents" && isGrounded && (
           <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
             <CheckCircle size={10} />
-            Grounded in your study material
+            From your study material
           </div>
+        )}
+        {!isUser && answerSource === "general_knowledge" && (
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">
+            <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+            Outside your uploaded study material
+          </div>
+        )}
+        {!isUser && generalMessage && (
+          <p className="mt-2 text-xs text-muted">{generalMessage}</p>
         )}
         {!isUser && message.sources && message.sources.length > 0 && (
           <div className="mt-3 border-t border-border pt-2 text-xs">

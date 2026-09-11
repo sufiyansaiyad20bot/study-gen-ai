@@ -31,6 +31,21 @@ from backend.app.rag.vector_store import vector_store
 _TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9_]+")
 _DIM = 1024
 
+# Common English stop words that should not count as content signals.
+_STOP_WORDS = {
+    "what", "is", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "do", "does", "did", "will", "would",
+    "could", "should", "may", "might", "can", "shall", "must",
+    "the", "a", "an", "of", "to", "in", "on", "for", "with",
+    "how", "why", "when", "where", "who", "which", "that",
+    "this", "these", "those", "it", "its", "they", "them",
+    "and", "or", "but", "if", "then", "else", "about",
+    "into", "from", "by", "at", "as", "so", "than", "too",
+    "very", "just", "also", "only", "own", "same", "other",
+    "some", "any", "all", "both", "each", "few", "more",
+    "most", "such", "no", "nor", "not", "up", "out",
+}
+
 
 def _hash_token(tok: str) -> int:
     h = 0
@@ -131,15 +146,63 @@ def embed_texts(texts: list[str]) -> np.ndarray:
     return padded
 
 
+def _content_words(text: str) -> set[str]:
+    """Return the set of lowercase content (non-stop-word) tokens in *text*."""
+    return {
+        t.lower()
+        for t in _TOKEN.findall(text)
+        if t.lower() not in _STOP_WORDS and len(t) > 1
+    }
+
+
+def is_relevant(question: str, contexts: list[dict]) -> bool:
+    """Decide whether retrieved chunks actually support the question.
+
+    The deterministic embedder can produce non-zero cosine similarity for
+    chunks that are unrelated to the question (e.g. "What is quantum
+    computing?" against a Python document). This function adds a content-word
+    overlap check on top of the similarity threshold so that a chunk is only
+    treated as relevant when it shares at least one meaningful token with
+    the question.
+
+    Returns True when at least one retrieved chunk passes both checks.
+    """
+    if not contexts:
+        return False
+
+    q_words = _content_words(question)
+    if not q_words:
+        return False
+
+    for ctx in contexts:
+        c_words = _content_words(ctx.get("text", ""))
+        if q_words & c_words:
+            return True
+    return False
+
+
 def retrieve(
     user_id: int,
     question: str,
     top_k: Optional[int] = None,
     doc_id: Optional[int] = None,
 ) -> list[dict]:
-    """Embed the question and retrieve top-k relevant chunks for the user."""
+    """Embed the question and retrieve top-k relevant chunks for the user.
+
+    Returns a list of chunk dicts. Each dict includes a "score" field
+    (cosine similarity, 0.0–1.0). The caller is responsible for deciding
+    whether the retrieved scores are high enough to treat the answer as
+    document-grounded.
+    """
     k = top_k or settings.RAG_TOP_K
     q_vec = embed_texts([question])
     if q_vec.shape[0] == 0:
         return []
     return vector_store.search(user_id, q_vec[0], top_k=k, doc_id=doc_id)
+
+
+def max_relevance_score(contexts: list[dict]) -> float:
+    """Return the highest similarity score among retrieved chunks, or 0.0."""
+    if not contexts:
+        return 0.0
+    return max(float(c.get("score", 0.0)) for c in contexts)

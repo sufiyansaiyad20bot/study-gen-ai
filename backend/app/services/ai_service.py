@@ -72,10 +72,14 @@ MSG_NETWORK = (
 _CHAT_SYSTEM = (
     "You are Study Gen AI, an AI study assistant for students. "
     "You will be given the student's question and CONTEXT extracted from "
-    "their own uploaded study material. Answer the question using the CONTEXT. "
-    "If the CONTEXT does not contain enough information to answer, say so clearly "
-    "and suggest what the student could upload or ask instead. "
-    "Cite the source filename(s) when you use the CONTEXT."
+    "their own uploaded study material. "
+    "Answer the question using the CONTEXT when it contains enough relevant "
+    "information. If the CONTEXT does not contain enough information to answer, "
+    "clearly state that the information was not found in the uploaded material "
+    "and then provide a general explanation. "
+    "Never claim that information came from the uploaded document unless the "
+    "CONTEXT actually supports it. Never invent document citations. "
+    "Cite the source filename(s) only when you actually used the CONTEXT."
 )
 
 _QUIZ_SYSTEM = (
@@ -233,16 +237,32 @@ def _extract_json(text: str) -> Optional[dict]:
 
 # ----- public generation entry points ---------------------------------------
 
-def chat_answer(question: str, contexts: list[dict]) -> str:
+def chat_answer(question: str, contexts: list[dict]) -> dict:
     """Answer a question using retrieved context chunks.
 
-    Raises AIError if Gemini is unavailable. Returns a string only on success.
+    Returns a dict with:
+      - answer: str
+      - answer_source: "uploaded_documents" or "general_knowledge"
+      - message: optional human-friendly note for general-knowledge answers
+
+    Raises AIError if Gemini is unavailable.
     """
     if not contexts:
-        return (
-            "I couldn't find anything relevant in your uploaded study material to "
-            "answer this question. Please upload notes on this topic and try again."
+        # No relevant document context — fall back to general knowledge
+        prompt = (
+            f"QUESTION:\n{question}\n\n"
+            "The student's uploaded study material does not contain enough "
+            "relevant information to answer this question. "
+            "Provide a clear, accurate general explanation. "
+            "Begin your response by stating that this information was not found "
+            "in the uploaded study material, then give the explanation."
         )
+        answer = _call_gemini(prompt, _CHAT_SYSTEM)
+        return {
+            "answer": answer,
+            "answer_source": "general_knowledge",
+            "message": "This information was not found in your uploaded study material.",
+        }
 
     ctx_lines = []
     for c in contexts:
@@ -254,9 +274,16 @@ def chat_answer(question: str, contexts: list[dict]) -> str:
     prompt = (
         f"CONTEXT FROM THE STUDENT'S UPLOADED MATERIAL:\n\n{context_block}\n\n"
         f"QUESTION:\n{question}\n\n"
-        "Answer using the CONTEXT above. Be clear and accurate."
+        "Answer using the CONTEXT above. Be clear and accurate. "
+        "If the CONTEXT does not contain enough information to answer, "
+        "clearly state that the information was not found in the uploaded material "
+        "and then provide a general explanation."
     )
-    return _call_gemini(prompt, _CHAT_SYSTEM)
+    answer = _call_gemini(prompt, _CHAT_SYSTEM)
+    return {
+        "answer": answer,
+        "answer_source": "uploaded_documents",
+    }
 
 
 def generate_quiz(contexts: list[dict], num_questions: int = 5) -> dict:

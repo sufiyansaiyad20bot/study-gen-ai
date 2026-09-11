@@ -15,7 +15,7 @@ from backend.app.database import get_db
 from backend.app.models.chat_history import ChatHistory
 from backend.app.models.document import Document
 from backend.app.models.user import User
-from backend.app.rag import retrieve
+from backend.app.rag import is_relevant, retrieve
 from backend.app.schemas import (
     ChatHistoryOut,
     ChatRequest,
@@ -57,6 +57,12 @@ def _ask(payload: ChatRequest, db: Session, current_user: User) -> ChatResponse:
         doc_id=payload.document_id,
     )
 
+    # Determine whether retrieved context is actually relevant enough
+    # to treat the answer as document-grounded. A non-empty result from
+    # FAISS does NOT guarantee relevance — the deterministic embedder can
+    # produce non-zero similarity for unrelated chunks.
+    relevant = is_relevant(payload.question, contexts)
+
     sources = [
         ChatSource(
             doc_id=c["doc_id"],
@@ -69,25 +75,34 @@ def _ask(payload: ChatRequest, db: Session, current_user: User) -> ChatResponse:
     ]
 
     try:
-        answer = chat_answer(payload.question, contexts)
+        result = chat_answer(payload.question, contexts if relevant else [])
     except AIError as exc:
         raise_ai_error(exc)
+
+    answer_text = result["answer"]
+    answer_source = result.get(
+        "answer_source",
+        "uploaded_documents" if relevant else "general_knowledge",
+    )
+    general_message = result.get("message", "")
 
     # Persist the interaction for this user only.
     history = ChatHistory(
         user_id=current_user.id,
         document_id=payload.document_id,
         question=payload.question,
-        answer=answer,
-        grounded=1 if contexts else 0,
+        answer=answer_text,
+        grounded=1 if relevant else 0,
     )
     db.add(history)
     db.commit()
 
     return ChatResponse(
-        answer=answer,
-        sources=sources,
-        grounded=bool(contexts),
+        answer=answer_text,
+        sources=sources if relevant else [],
+        grounded=relevant,
+        answer_source=answer_source,
+        general_message=general_message,
     )
 
 

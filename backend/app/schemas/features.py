@@ -40,6 +40,8 @@ class ChatResponse(BaseModel):
     answer: str
     sources: list[ChatSource]
     grounded: bool
+    answer_source: str = "uploaded_documents"
+    general_message: str = ""
 
 
 class QuizRequest(BaseModel):
