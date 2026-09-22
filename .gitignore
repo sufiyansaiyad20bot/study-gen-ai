@@ -42,7 +42,7 @@ venv.bak/
 *.db
 *.sqlite
 *.sqlite3
-database/
+/database/
 !database/.gitkeep
 
 # Uploaded documents (private student data)

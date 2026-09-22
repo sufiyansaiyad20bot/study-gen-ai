@@ -32,6 +32,7 @@ export default function Chat() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const loadingRef = useRef(false);
   const [error, setError] = useState("");
   const [historyLoading, setHistoryLoading] = useState(true);
   const [aiError, setAiError] = useState(null);
@@ -41,7 +42,7 @@ export default function Chat() {
   const hasConversation = messages.length > 1;
 
   function submitPrompt(prompt) {
-    if (loading) return;
+    if (loadingRef.current) return;
     setInput(prompt);
     // Use a microtask so the input state updates before send() reads it
     setTimeout(() => send(prompt), 0);
@@ -98,7 +99,7 @@ export default function Chat() {
 
   async function send(overrideText) {
     const text = (overrideText ?? input).trim();
-    if (!text || loading) return;
+    if (!text || loadingRef.current) return;
     if (docs.length === 0) {
       setError("You need to upload a study material first.");
       return;
@@ -107,6 +108,7 @@ export default function Chat() {
     setAiError(null);
     setMessages((m) => [...m, { role: "user", content: text }]);
     setInput("");
+    loadingRef.current = true;
     setLoading(true);
     try {
       const payload = { question: text };
@@ -165,6 +167,7 @@ export default function Chat() {
       // Keep the error banner visible for retry
       setAiError(err);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   }
@@ -285,7 +288,7 @@ export default function Chat() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                send();
+                if (!loadingRef.current) send();
               }}
               className="flex items-end gap-2"
             >
@@ -294,7 +297,7 @@ export default function Chat() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
+                  if (e.key === "Enter" && !e.shiftKey && !loadingRef.current) {
                     e.preventDefault();
                     send();
                   }
