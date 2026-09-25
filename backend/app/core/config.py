@@ -74,8 +74,17 @@ class Settings:
     VECTOR_DB_PATH: Path = PROJECT_ROOT / Path(os.getenv("VECTOR_DB_PATH", "vector_store"))
 
     # --- AI / LLM Provider ---
+    # Select provider: "gemini" or "openrouter"
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "gemini")
+
+    # --- Google Gemini ---
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+
+    # --- OpenRouter ---
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
+    OPENROUTER_BASE_URL: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 
     # --- Embeddings ---
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "gemini-embedding-001")

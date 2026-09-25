@@ -1,57 +1,44 @@
 """
-Study Gen AI — Gemini-powered generation: chat, quiz, revision.
+Study Gen AI — LLM-powered generation: chat, quiz, revision.
 
-All generation calls go through `_call_gemini`, which:
+All generation calls go through the configured LLM provider (Gemini or OpenRouter),
+which returns the generated text on success or raises `AIError` with a `code` field
+that the API layer maps to an HTTP response. The possible codes are:
 
-  * returns the generated text on success
-  * raises `AIError` with a `code` field that the API layer maps to an
-    HTTP response. The possible codes are:
-
-        - "AI_NOT_CONFIGURED"  : GEMINI_API_KEY missing or empty
-        - "AI_QUOTA_EXCEEDED"  : Gemini returned 429 / quota
-        - "AI_UNAVAILABLE"     : Gemini is reachable but the call failed
-                                 (5xx, bad response, model not found, etc.)
-        - "AI_NETWORK_ERROR"   : connection / DNS / timeout error
+    - "AI_NOT_CONFIGURED"  : required API key missing or empty
+    - "AI_QUOTA_EXCEEDED"  : provider returned 429 / quota exceeded
+    - "AI_AUTH_FAILED"     : authentication failed (invalid API key)
+    - "AI_UNAVAILABLE"     : provider is reachable but the call failed
+                              (5xx, bad response, model not found, etc.)
+    - "AI_NETWORK_ERROR"   : connection / DNS / timeout error
 """
 
 from __future__ import annotations
 
 import json
 import re
-import socket
-import time
 from typing import Optional
 
 from backend.app.core.config import settings
+from backend.app.services.llm import (
+    AIError,
+    get_configured_provider,
+)
+
+# Re-export for backwards compatibility
+from backend.app.services.llm.base import AIError as _AIError
 
 
-# ----- public error type ----------------------------------------------------
-
-class AIError(Exception):
-    """Raised by the AI service when a generation request cannot be served.
-
-    The HTTP layer turns this into a 503 with a structured body so the
-    frontend can render a precise user-facing message.
-    """
-
-    def __init__(self, code: str, message: str, retry_after: Optional[int] = None):
-        super().__init__(message)
-        self.code = code
-        self.message = message
-        self.retry_after = retry_after
-
-
-# ----- user-facing messages (no API key, no key wording) --------------------
+# ----- user-facing messages (no API key, no internal details) -----------------
 
 MSG_NOT_CONFIGURED = (
-    "The Gemini API key is not configured on the server. "
-    "Add GEMINI_API_KEY to the backend .env file and restart the backend."
+    "The AI API key is not configured on the server. "
+    "Add the required API key to the backend .env file and restart the backend."
 )
 MSG_QUOTA = (
-    "Gemini API quota has been reached. Your document and RAG retrieval are "
-    "working correctly, but Gemini is temporarily unavailable because the API "
-    "quota was exceeded. Please try again later, or use a Gemini API key / "
-    "model that still has available quota."
+    "The AI provider quota has been reached. Your document and RAG retrieval are "
+    "working correctly, but the AI service is temporarily unavailable. "
+    "Please try again later, or use a different provider / key with available quota."
 )
 MSG_UNAVAILABLE = (
     "The AI service is temporarily unavailable. Your uploaded study material "
@@ -63,7 +50,7 @@ MSG_NETWORK = (
 )
 
 
-# ----- prompts --------------------------------------------------------------
+# ----- prompts ----------------------------------------------------------------
 
 # NOTE: keep prompts short and give a concrete example rather than an
 # escaped JSON schema. Long escaped schemas make the model hallucinate
@@ -111,106 +98,19 @@ _REVISION_SYSTEM = (
 )
 
 
-# ----- helpers --------------------------------------------------------------
+# ----- helpers ----------------------------------------------------------------
 
-def _is_configured() -> bool:
-    return bool(settings.GEMINI_API_KEY)
+def _call_provider(prompt: str, system: str) -> str:
+    """Call the configured LLM provider with retry on transient errors.
 
-
-def _classify_exception(exc: Exception) -> AIError:
-    """Map a low-level Gemini exception to a user-friendly AIError."""
-    msg = str(exc) or ""
-    low = msg.lower()
-
-    # Network / DNS / timeout
-    if isinstance(exc, (socket.gaierror, socket.timeout, TimeoutError, ConnectionError)):
-        return AIError("AI_NETWORK_ERROR", MSG_NETWORK)
-    if "timed out" in low or "deadline" in low or "timeout" in low:
-        return AIError("AI_NETWORK_ERROR", MSG_NETWORK)
-
-    # Quota
-    if "429" in msg or "quota" in low or "resource_exhausted" in low or "rate" in low:
-        retry = None
-        # Try to extract Retry-After-style hints; the SDK doesn't expose
-        # headers directly, so this is best-effort.
-        m = re.search(r"retry.*?(\d+)\s*s", low)
-        if m:
-            try:
-                retry = int(m.group(1))
-            except ValueError:
-                retry = None
-        return AIError("AI_QUOTA_EXCEEDED", MSG_QUOTA, retry_after=retry)
-
-    # Model not found / 404
-    if "404" in msg and "model" in low:
-        return AIError(
-            "AI_UNAVAILABLE",
-            MSG_UNAVAILABLE + f" (model not available: {settings.GEMINI_MODEL})",
-        )
-
-    # Generic 5xx
-    if any(code in msg for code in ("500", "502", "503", "504")):
-        return AIError("AI_UNAVAILABLE", MSG_UNAVAILABLE)
-
-    return AIError("AI_UNAVAILABLE", MSG_UNAVAILABLE + f" (detail: {msg[:160]})")
+    Raises AIError on failure.
+    """
+    provider = get_configured_provider()
+    result = provider.generate(prompt, system)
+    return result.text
 
 
-def _call_gemini(prompt: str, system: str) -> str:
-    """Call Gemini with retry on transient errors. Raise AIError on failure."""
-    if not _is_configured():
-        raise AIError("AI_NOT_CONFIGURED", MSG_NOT_CONFIGURED)
-
-    import google.generativeai as genai
-
-    genai.configure(api_key=settings.GEMINI_API_KEY)
-    model = genai.GenerativeModel(settings.GEMINI_MODEL)
-
-    last_exc: Optional[Exception] = None
-    for attempt in range(3):
-        try:
-            resp = model.generate_content(
-                [system, prompt],
-                generation_config={"temperature": 0.3, "max_output_tokens": 2048},
-                request_options={"timeout": 20},
-            )
-            text = (resp.text or "").strip()
-            if not text:
-                raise AIError("AI_UNAVAILABLE", MSG_UNAVAILABLE)
-            return text
-        except AIError:
-            raise
-        except Exception as exc:  # noqa: BLE001
-            last_exc = exc
-            low = str(exc).lower()
-            # 429 quota: do NOT retry — retrying a quota error just wastes time
-            # and the user needs to see the quota message immediately.
-            is_quota = (
-                "429" in str(exc)
-                or "resource_exhausted" in low
-                or "quota" in low
-                or "rate" in low
-            )
-            if is_quota:
-                raise _classify_exception(exc) from exc
-            transient = (
-                "500" in str(exc)
-                or "502" in str(exc)
-                or "503" in str(exc)
-                or "504" in str(exc)
-                or "deadline" in low
-                or "timed out" in low
-            )
-            if transient and attempt < 2:
-                time.sleep(1.0 * (attempt + 1))
-                continue
-            raise _classify_exception(exc) from exc
-
-    if last_exc:
-        raise _classify_exception(last_exc) from last_exc
-    raise AIError("AI_UNAVAILABLE", MSG_UNAVAILABLE)
-
-
-# ----- JSON parsing ---------------------------------------------------------
+# ----- JSON parsing -----------------------------------------------------------
 
 def _extract_json(text: str) -> Optional[dict]:
     if not text:
@@ -235,7 +135,7 @@ def _extract_json(text: str) -> Optional[dict]:
     return None
 
 
-# ----- public generation entry points ---------------------------------------
+# ----- public generation entry points ----------------------------------------
 
 def chat_answer(question: str, contexts: list[dict]) -> dict:
     """Answer a question using retrieved context chunks.
@@ -245,7 +145,7 @@ def chat_answer(question: str, contexts: list[dict]) -> dict:
       - answer_source: "uploaded_documents" or "general_knowledge"
       - message: optional human-friendly note for general-knowledge answers
 
-    Raises AIError if Gemini is unavailable.
+    Raises AIError if the AI service is unavailable.
     """
     if not contexts:
         # No relevant document context — fall back to general knowledge
@@ -257,7 +157,7 @@ def chat_answer(question: str, contexts: list[dict]) -> dict:
             "Begin your response by stating that this information was not found "
             "in the uploaded study material, then give the explanation."
         )
-        answer = _call_gemini(prompt, _CHAT_SYSTEM)
+        answer = _call_provider(prompt, _CHAT_SYSTEM)
         return {
             "answer": answer,
             "answer_source": "general_knowledge",
@@ -279,7 +179,7 @@ def chat_answer(question: str, contexts: list[dict]) -> dict:
         "clearly state that the information was not found in the uploaded material "
         "and then provide a general explanation."
     )
-    answer = _call_gemini(prompt, _CHAT_SYSTEM)
+    answer = _call_provider(prompt, _CHAT_SYSTEM)
     return {
         "answer": answer,
         "answer_source": "uploaded_documents",
@@ -289,13 +189,10 @@ def chat_answer(question: str, contexts: list[dict]) -> dict:
 def generate_quiz(contexts: list[dict], num_questions: int = 5) -> dict:
     """Generate a multiple-choice quiz from retrieved context.
 
-    Raises AIError if Gemini cannot serve the request. We do NOT silently
+    Raises AIError if the AI service cannot serve the request. We do NOT silently
     fall back to a deterministic fake quiz — the user must know that AI
     generation is unavailable.
     """
-    if not _is_configured():
-        raise AIError("AI_NOT_CONFIGURED", MSG_NOT_CONFIGURED)
-
     if not contexts:
         raise ValueError("No contexts available to generate a quiz from")
 
@@ -308,7 +205,7 @@ def generate_quiz(contexts: list[dict], num_questions: int = 5) -> dict:
         f"correct answer.\n\nCONTEXT:\n{context_block}"
     )
 
-    raw = _call_gemini(prompt, _QUIZ_SYSTEM)
+    raw = _call_provider(prompt, _QUIZ_SYSTEM)
     parsed = _extract_json(raw)
     if parsed and isinstance(parsed.get("questions"), list) and parsed["questions"]:
         return parsed
@@ -316,7 +213,7 @@ def generate_quiz(contexts: list[dict], num_questions: int = 5) -> dict:
     # The model produced text but it wasn't valid JSON — surface as unavailable
     raise AIError(
         "AI_UNAVAILABLE",
-        "Gemini returned a response that could not be parsed as a quiz. "
+        "The AI service returned a response that could not be parsed as a quiz. "
         "Please try again.",
     )
 
@@ -324,13 +221,10 @@ def generate_quiz(contexts: list[dict], num_questions: int = 5) -> dict:
 def generate_revision(contexts: list[dict], topic: Optional[str] = None) -> dict:
     """Generate revision notes from retrieved context.
 
-    Raises AIError if Gemini cannot serve the request. We do NOT silently
+    Raises AIError if the AI service cannot serve the request. We do NOT silently
     fall back to a deterministic fake revision — the user must know that
     AI generation is unavailable.
     """
-    if not _is_configured():
-        raise AIError("AI_NOT_CONFIGURED", MSG_NOT_CONFIGURED)
-
     if not contexts:
         raise ValueError("No contexts available to generate revision notes from")
 
@@ -343,13 +237,13 @@ def generate_revision(contexts: list[dict], topic: Optional[str] = None) -> dict
         f"CONTEXT:\n{context_block}"
     )
 
-    raw = _call_gemini(prompt, _REVISION_SYSTEM)
+    raw = _call_provider(prompt, _REVISION_SYSTEM)
     parsed = _extract_json(raw)
     if parsed and (parsed.get("title") or parsed.get("summary")):
         return parsed
 
     raise AIError(
         "AI_UNAVAILABLE",
-        "Gemini returned a response that could not be parsed as revision notes. "
+        "The AI service returned a response that could not be parsed as revision notes. "
         "Please try again.",
     )
