@@ -3,22 +3,56 @@
  */
 
 import { AlertCircle, CheckCircle2, FileText, GraduationCap, Loader2, RefreshCw, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 import AppShell from "../components/AppShell";
 import { AIErrorBanner, ThinkingDots } from "../components/States";
 import { documentsApi, quizApi } from "../services/api";
+import { usePageState } from "../context/PageStateContext.jsx";
 
 export default function Quiz() {
   const [docs, setDocs] = useState([]);
   const [docId, setDocId] = useState("");
   const [num, setNum] = useState(5);
-  const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
-  const [submitted, setSubmitted] = useState(false);
+
+  // Persisted state for quiz
+  const [quizState, setQuizState, clearQuizState] = usePageState("quiz");
+
+  // Initialize from persisted state
+  const [questions, setQuestions] = useState(quizState?.questions || []);
+  const [answers, setAnswers] = useState(quizState?.answers || {});
+  const [submitted, setSubmitted] = useState(quizState?.submitted || false);
+  const [lastDocId, setLastDocId] = useState(quizState?.docId || "");
+  const [lastNum, setLastNum] = useState(quizState?.num || 5);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [aiError, setAiError] = useState(null);
+
+  // Sync docId with persisted docId on mount
+  useEffect(() => {
+    if (lastDocId && docs.some(d => d.id === Number(lastDocId))) {
+      setDocId(lastDocId);
+    }
+  }, [docs, lastDocId]);
+
+  // Sync num with persisted num on mount
+  useEffect(() => {
+    if (lastNum >= 1 && lastNum <= 20) {
+      setNum(lastNum);
+    }
+  }, [lastNum]);
+
+  // Persist quiz state whenever it changes
+  useEffect(() => {
+    setQuizState({
+      questions,
+      answers,
+      submitted,
+      docId,
+      num,
+    });
+  }, [questions, answers, submitted, docId, num, setQuizState]);
 
   useEffect(() => {
     documentsApi
@@ -26,27 +60,6 @@ export default function Quiz() {
       .then((d) => setDocs(d.filter((x) => x.status === "ready")))
       .catch((err) => setError(err.message));
   }, []);
-
-  async function generate() {
-    if (loading) return;
-    setLoading(true);
-    setError("");
-    setAiError(null);
-    setQuestions([]);
-    setAnswers({});
-    setSubmitted(false);
-    try {
-      const payload = { num_questions: num };
-      if (docId) payload.document_id = Number(docId);
-      const res = await quizApi.generate(payload);
-      setQuestions(res.questions || []);
-    } catch (err) {
-      setError(err.message);
-      setAiError(err);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function pick(qi, oi) {
     if (submitted) return;
@@ -62,6 +75,30 @@ export default function Quiz() {
     setQuestions([]);
     setAnswers({});
     setSubmitted(false);
+    clearQuizState();
+  }
+
+  async function generate() {
+    if (loading) return;
+    setLoading(true);
+    setError("");
+    setAiError(null);
+    setQuestions([]);
+    setAnswers({});
+    setSubmitted(false);
+    try {
+      const payload = { num_questions: num };
+      if (docId) payload.document_id = Number(docId);
+      const res = await quizApi.generate(payload);
+      setQuestions(res.questions || []);
+      setSubmitted(false);
+      setAnswers({});
+    } catch (err) {
+      setError(err.message);
+      setAiError(err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const score = submitted
@@ -130,25 +167,25 @@ export default function Quiz() {
             Upload study material first to generate quizzes.
           </p>
         )}
-{error && (
-            <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-error">
-              {error}
-            </p>
-          )}
-          {aiError && !loading && (
-            <div className="mt-3">
-              <AIErrorBanner
-                err={aiError}
-                onRetry={generate}
-                compact
-              />
-            </div>
-          )}
-          {loading && (
-            <div className="mt-3">
-              <ThinkingDots label="Creating your quiz…" />
-            </div>
-          )}
+      {error && (
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-error">
+            {error}
+          </p>
+        )}
+        {aiError && !loading && (
+          <div className="mt-3">
+            <AIErrorBanner
+              err={aiError}
+              onRetry={generate}
+              compact
+            />
+          </div>
+        )}
+        {loading && (
+          <div className="mt-3">
+            <ThinkingDots label="Creating your quiz…" />
+          </div>
+        )}
       </div>
 
       {questions.length > 0 && (

@@ -3,20 +3,52 @@
  */
 
 import { FileText, Loader2, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 import AppShell from "../components/AppShell";
 import { AIErrorBanner, ThinkingDots } from "../components/States";
 import { documentsApi, revisionApi } from "../services/api";
+import { usePageState } from "../context/PageStateContext.jsx";
 
 export default function Revision() {
   const [docs, setDocs] = useState([]);
   const [docId, setDocId] = useState("");
   const [topic, setTopic] = useState("");
+
+  // Persisted state for revision
+  const [revisionState, setRevisionState, clearRevisionState] = usePageState("revision");
+
+  // Initialize from persisted state
+  const [notes, setNotes] = useState(revisionState?.notes || null);
+  const [lastDocId, setLastDocId] = useState(revisionState?.docId || "");
+  const [lastTopic, setLastTopic] = useState(revisionState?.topic || "");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [aiError, setAiError] = useState(null);
-  const [notes, setNotes] = useState(null);
+
+  // Sync docId with persisted docId on mount
+  useEffect(() => {
+    if (lastDocId && docs.some(d => d.id === Number(lastDocId))) {
+      setDocId(lastDocId);
+    }
+  }, [docs, lastDocId]);
+
+  // Sync topic with persisted topic on mount
+  useEffect(() => {
+    if (lastTopic) {
+      setTopic(lastTopic);
+    }
+  }, [lastTopic]);
+
+  // Persist revision state whenever it changes
+  useEffect(() => {
+    setRevisionState({
+      notes,
+      docId,
+      topic,
+    });
+  }, [notes, docId, topic, setRevisionState]);
 
   useEffect(() => {
     documentsApi
@@ -24,6 +56,11 @@ export default function Revision() {
       .then((d) => setDocs(d.filter((x) => x.status === "ready")))
       .catch((err) => setError(err.message));
   }, []);
+
+  function reset() {
+    setNotes(null);
+    clearRevisionState();
+  }
 
   async function generate() {
     if (loading) return;
@@ -104,25 +141,25 @@ export default function Revision() {
             Upload study material first to generate revision notes.
           </p>
         )}
-{error && (
-            <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-error">
-              {error}
-            </p>
-          )}
-          {aiError && !loading && (
-            <div className="mt-3">
-              <AIErrorBanner
-                err={aiError}
-                onRetry={generate}
-                compact
-              />
-            </div>
-          )}
-          {loading && (
-            <div className="mt-3">
-              <ThinkingDots label="Preparing your revision notes…" />
-            </div>
-          )}
+      {error && (
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-error">
+            {error}
+          </p>
+        )}
+        {aiError && !loading && (
+          <div className="mt-3">
+            <AIErrorBanner
+              err={aiError}
+              onRetry={generate}
+              compact
+            />
+          </div>
+        )}
+        {loading && (
+          <div className="mt-3">
+            <ThinkingDots label="Preparing your revision notes…" />
+          </div>
+        )}
       </div>
 
       {notes && (
