@@ -9,6 +9,7 @@
  */
 
 import { createContext, useContext, useCallback, useEffect, useState, useMemo } from "react";
+import { useAuth } from "./AuthContext.jsx";
 
 const PAGE_STATE_PREFIX = "studygenai_page_state_";
 
